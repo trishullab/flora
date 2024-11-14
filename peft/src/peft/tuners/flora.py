@@ -545,15 +545,6 @@ class FLoraLayer:
             self.be_gamma.update(
                 nn.ModuleDict({adapter_name: ElementWiseMultiply(
                     (num_heads, self.out_features), r, "gamma")}))
-            #self.be_alpha.update(
-            #    {adapter_name: nn.Parameter(
-            #    torch.ones(num_heads, self.in_features) if r == 1 else torch.ones(r, num_heads, self.in_features))}
-            #)
-            #self.be_gamma.update(
-            #    {adapter_name: nn.Parameter(
-            #    torch.zeros(num_heads, self.out_features) if r == 1 else torch.ones(r, num_heads, self.out_features))}
-            #)
-            #self.scaling[adapter_name] = be_alpha / r
             # Use scaling 1.0 in BE for now.
             self.scaling[adapter_name] = 1.0
         if init_be_weights:
@@ -680,14 +671,6 @@ class Linear(nn.Linear, FLoraLayer):
             result = F.linear(x, transpose(self.weight, self.fan_in_fan_out))
             # Not sure whether need to group bias to different tasks.
             result = self.be_gamma[self.active_adapter](result, **kwargs) + self.bias
-
-            #x = x.view(self.num_heads, examples_per_model, -1, self.in_features)
-            #x = self.be_alpha[self.active_adapter](x)
-            #x = x.reshape([batch_size, -1, self.in_features])
-            #result = F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=self.bias)
-            #result = result.view(self.num_heads, examples_per_model, -1, self.out_features)
-            #result = self.be_gamma[self.active_adapter](result)
-            #result = result.reshape([batch_size, -1, self.out_features])
         else:
             result = F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=self.bias)
 
@@ -763,14 +746,6 @@ if is_bnb_available():
                     else:
                         result = self.be_gamma[self.active_adapter](
                             out, **kwargs).to(expected_dtype)
-
-                    #x = x.view(self.num_heads, examples_per_model, -1, self.in_features)
-                    #x = self.be_alpha[self.active_adapter](x)
-                    #x = x.reshape([batch_size, -1, self.in_features])
-                    #result = super().forward(x)
-                    #result = result.view(self.num_heads, examples_per_model, -1, self.out_features)
-                    #result = self.be_gamma[self.active_adapter](result)
-                    #result = result.reshape([batch_size, -1, self.out_features]).to(expected_dtype)
                 else:
                     x = self.be_alpha[self.active_adapter](x, **kwargs)
 
@@ -794,27 +769,6 @@ if is_bnb_available():
                     result = self.be_gamma[self.active_adapter](out, **kwargs)
                     if self.bias is not None:
                         result += self.bias
-
-                    #self.be_alpha["default"].randomize()
-                    #self.be_gamma["default"].randomize()
-                    #tt1 = self.be_alpha[self.active_adapter](x)
-                    #my_weight = torch.randn(self.weight.shape).to(self.weight.device)
-                    #tt2 = F.linear(tt1, my_weight)
-                    #tt2 = super().forward(tt1)
-                    #tt3 = self.be_gamma[self.active_adapter](tt2)
-
-                    #kk = torch.bmm(self.be_gamma["default"].weight.unsqueeze(2),self.be_alpha["default"].weight.unsqueeze(1))
-                    #new_weight = my_weight * kk[1]
-
-                    #import ipdb;ipdb.set_trace()
-
-                    #x = x.view(self.num_heads, examples_per_model, -1, self.in_features)
-                    #x = self.be_alpha[self.active_adapter](x)
-                    #x = x.reshape([batch_size, -1, self.in_features])
-                    #result = super().forward(x)
-                    #result = result.view(self.num_heads, examples_per_model, -1, self.out_features)
-                    #result = self.be_gamma[self.active_adapter](result)
-                    #result = result.reshape([batch_size, -1, self.out_features])
             return result
 
 
